@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 어시스턴트</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --mint-light: #e0f2f7; /* 배경에 가까운 민트 */
+            --mint-medium: #a7d9e8; /* 기본 민트색 */
+            --mint-dark: #62b1cc; /* 진한 민트색 */
+            --text-dark: #2c3e50;
+            --text-medium: #495057;
+            --text-light: #6c757d;
+            --border-color: #dee2e6;
+            --chat-bubble-user: #a7d9e8; /* 사용자 말풍선 (민트) */
+            --chat-bubble-ai: #ffffff; /* AI 말풍선 (흰색) */
+            --input-bg: #f8f9fa;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: var(--mint-light);
+            color: var(--text-dark);
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: var(--mint-medium);
+            color: white;
+            padding: 20px 30px;
+            font-size: 1.5em;
+            font-weight: 700;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+            position: relative;
+            z-index: 10;
+        }
+        .header .header-icon {
+            position: absolute;
+            left: 30px;
+            font-size: 1.2em;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .chat-area {
+            flex-grow: 1;
+            padding: 20px 30px;
+            overflow-y: auto;
+            background-color: var(--mint-light);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            scroll-behavior: smooth;
+        }
+
+        .message-wrapper {
+            display: flex;
+            align-items: flex-start;
+            max-width: 85%;
+        }
+
+        .message-wrapper.user {
+            justify-content: flex-end;
+            align-self: flex-end;
+        }
+
+        .message-wrapper.ai {
+            justify-content: flex-start;
+            align-self: flex-start;
+        }
+
+        .message-bubble {
+            padding: 14px 20px;
+            border-radius: 22px;
+            line-height: 1.6;
+            word-wrap: break-word;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+            position: relative;
+        }
+
+        .message-bubble.user {
+            background-color: var(--chat-bubble-user);
+            color: var(--text-dark);
+            border-bottom-right-radius: 6px;
+        }
+
+        .message-bubble.ai {
+            background-color: var(--chat-bubble-ai);
+            color: var(--text-medium);
+            border-bottom-left-radius: 6px;
+        }
+
+        .timestamp {
+            font-size: 0.75em;
+            color: var(--text-light);
+            margin-top: 5px;
+            display: block;
+        }
+        .message-wrapper.user .timestamp { text-align: right; margin-right: 8px;}
+        .message-wrapper.ai .timestamp { text-align: left; margin-left: 8px;}
+
+        .input-bar {
+            display: flex;
+            padding: 15px 30px;
+            background-color: var(--input-bg);
+            border-top: 1px solid var(--border-color);
+            align-items: center;
+            box-shadow: 0 -3px 10px rgba(0, 0, 0, 0.05);
+            z-index: 10;
+        }
+
+        .input-bar input[type="text"] {
+            flex-grow: 1;
+            padding: 14px 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            font-size: 1.1em;
+            outline: none;
+            margin-right: 15px;
+            background-color: #ffffff;
+            transition: border-color 0.2s;
+        }
+
+        .input-bar input[type="text"]:focus {
+            border-color: var(--mint-dark);
+            box-shadow: 0 0 0 3px rgba(98, 177, 204, 0.2);
+        }
+
+        .input-bar button {
+            background-color: var(--mint-dark);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .input-bar button .send-icon {
+            margin-left: 5px;
+        }
+
+        .input-bar button:hover {
+            background-color: #519bac;
+        }
+
+        .input-bar button:active {
+            transform: scale(0.97);
+        }
+
+        /* 챗봇 타이핑 효과 */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            padding: 12px 18px;
+            border-radius: 20px;
+            background-color: var(--chat-bubble-ai);
+            color: var(--text-medium);
+            max-width: 75%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .typing-indicator span {
+            width: 9px;
+            height: 9px;
+            background-color: var(--text-light);
+            border-radius: 50%;
+            margin: 0 4px;
+            animation: bounce 1.2s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+        }
+
+        /* 스크롤바 스타일링 */
+        .chat-area::-webkit-scrollbar {
+            width: 8px;
+        }
+        .chat-area::-webkit-scrollbar-track {
+            background: var(--mint-light);
+        }
+        .chat-area::-webkit-scrollbar-thumb {
+            background: var(--mint-medium);
+            border-radius: 4px;
+        }
+        .chat-area::-webkit-scrollbar-thumb:hover {
+            background: var(--mint-dark);
+        }
+
+        /* 정보 카드 스타일 */
+        .info-card {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--border-color);
+            color: var(--text-dark);
+        }
+        .info-card h3 {
+            margin-top: 0;
+            color: var(--mint-dark);
+            font-size: 1.25em;
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+        .info-card p, .info-card ul {
+            font-size: 1em;
+            line-height: 1.7;
+            margin-bottom: 8px;
+        }
+        .info-card ul {
+            list-style: none;
+            padding: 0;
+        }
+        .info-card ul li {
+            margin-bottom: 5px;
+            padding-left: 10px;
+            position: relative;
+        }
+        .info-card ul li::before {
+            content: '\f058'; /* Font Awesome check-circle 아이콘 */
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+            color: var(--mint-dark);
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-size: 0.8em; /* 아이콘 크기 조절 */
+            line-height: 1.7; /* 텍스트와 정렬 */
+        }
+        .info-card ul li strong {
+            color: var(--text-dark);
+        }
+
+        .info-card.person .profile-img {
+            float: left;
+            margin-right: 15px;
+            margin-bottom: 10px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--mint-medium);
+        }
+        .info-card.person::after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="header">
+        <i class="fas fa-robot header-icon"></i> AI 어시스턴트
+    </div>
+    <div class="chat-area" id="chatArea">
+        <div class="message-wrapper ai">
+            <div class="message-bubble ai">
+                안녕하세요! 무엇을 도와드릴까요?
+                <br><b>시간, 뉴스, 트럼프, 빌 게이츠, 911 테러, 한국 대통령, 중국 주석, 일본 총리, 한국 역사</b> 등을 물어보세요.
+                <span class="timestamp">오후 10:52</span>
+            </div>
+        </div>
+        </div>
+    <div class="input-bar">
+        <input type="text" id="userInput" placeholder="메시지를 입력하세요..." autofocus>
+        <button id="sendMessage">전송 <i class="fas fa-paper-plane send-icon"></i></button>
+    </div>
+
+    <script>
+        const chatArea = document.getElementById('chatArea');
+        const userInput = document.getElementById('userInput');
+        const sendMessageBtn = document.getElementById('sendMessage');
+
+        // 이전 대화 내용을 저장 (간단한 컨텍스트 유지용)
+        let conversationHistory = [];
+        const MAX_HISTORY = 5; // 최근 5개 메시지까지 기억
+
+        function formatTime(date) {
+            const hours = date.getHours();
+            const minutes = date.getMinutes();
+            const ampm = hours >= 12 ? '오후' : '오전';
+            const formattedHours = hours % 12 === 0 ? 12 : hours % 12;
+            const formattedMinutes = minutes < 10 ? '0' + minutes : minutes;
+            return `${ampm} ${formattedHours}:${formattedMinutes}`;
+        }
+
+        function appendMessage(sender, text) {
+            const messageWrapper = document.createElement('div');
+            messageWrapper.classList.add('message-wrapper', sender);
+
+            const messageBubble = document.createElement('div');
+            messageBubble.classList.add('message-bubble', sender);
+            messageBubble.innerHTML = text; // HTML을 포함할 수 있도록 innerHTML 사용
+
+            const timestampSpan = document.createElement('span');
+            timestampSpan.classList.add('timestamp');
+            timestampSpan.textContent = formatTime(new Date());
+
+            messageWrapper.appendChild(messageBubble);
+            messageWrapper.appendChild(timestampSpan);
+            chatArea.appendChild(messageWrapper);
+            chatArea.scrollTop = chatArea.scrollHeight; // 스크롤을 최신 메시지로 이동
+
+            // 대화 기록에 추가 (AI 메시지만 저장)
+            if (sender === 'ai') {
+                conversationHistory.push({ role: 'ai', content: text });
+                if (conversationHistory.length > MAX_HISTORY) {
+                    conversationHistory.shift(); // 오래된 메시지 제거
+                }
+            }
+        }
+
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.classList.add('message-wrapper', 'ai', 'typing-indicator-wrapper');
+            typingDiv.innerHTML = `
+                <div class="typing-indicator ai">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+            chatArea.appendChild(typingDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.querySelector('.typing-indicator-wrapper');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        function generateAIResponse(question, history) {
+            const lowerQuestion = question.toLowerCase().trim();
+            let response = "죄송합니다. 요청하신 내용을 이해하기 어렵습니다. 다른 질문을 해주세요.";
+
+            // 핵심 키워드에 대한 즉각적인 응답
+            if (lowerQuestion.includes("트럼프")) {
+                response = `<div class="info-card person">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Donald_Trump_official_portrait_%28cropped%29.jpg/250px-Donald_Trump_official_portrait_%28cropped%29.jpg" alt="도널드 트럼프" class="profile-img">
+                                <h3>도널드 트럼프 (Donald Trump)</h3>
+                                <p><strong>출생:</strong> 1946년 6월 14일 (미국 뉴욕)</p>
+                                <p><strong>직업:</strong> 사업가, 정치인</p>
+                                <p><strong>주요 경력:</strong></p>
+                                <ul>
+                                    <li><b>제45대 미국 대통령 (2017년 ~ 2021년)</b></li>
+                                    <li>부동산 사업가 및 TV 진행자</li>
+                                </ul>
+                                <p>2024년 미국 대통령 선거에 다시 출마하여 재선에 도전하고 있습니다.</p>
+                            </div>`;
+            } else if (lowerQuestion.includes("빌 게이츠")) {
+                response = `<div class="info-card person">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/a/a8/Bill_Gates_2017_%28cropped%29.jpg" alt="빌 게이츠" class="profile-img">
+                                <h3>빌 게이츠 (Bill Gates)</h3>
+                                <p><strong>출생:</strong> 1955년 10월 28일 (미국 시애틀)</p>
+                                <p><strong>직업:</strong> 마이크로소프트 공동 창업자, 자선사업가</p>
+                                <p><strong>주요 업적:</strong></p>
+                                <ul>
+                                    <li>세계 최대 소프트웨어 기업 <b>마이크로소프트 공동 창업</b> 및 개인용 컴퓨터 대중화 기여.</li>
+                                    <li>빌 & 멜린다 게이츠 재단을 통한 전 세계 빈곤 퇴치 및 보건 증진 활동.</li>
+                                </ul>
+                                <p>세계적으로 가장 영향력 있는 인물 중 한 명입니다.</p>
+                            </div>`;
+            } else if (lowerQuestion.includes("911 테러") || lowerQuestion.includes("9/11") || lowerQuestion.includes("사건사고")) {
+                response = `<div class="info-card">
+                                <h3>주요 사건사고: 9/11 테러</h3>
+                                <ul>
+                                    <li><b>사건명:</b> 9/11 테러 (미국 9.11 테러)</li>
+                                    <li><b>발생일:</b> 2001년 9월 11일</li>
+                                    <li><b>주요 내용:</b> 이슬람 테러 단체 알카에다가 미국 뉴욕의 세계무역센터와 워싱턴 D.C.의 펜타곤을 대상으로 동시다발적으로 자행한 항공기 납치 테러.</li>
+                                    <li><b>영향:</b> 약 3,000명의 사망자가 발생했으며, 미국의 대테러 전쟁 시작과 전 세계 안보 정책에 막대한 영향을 미쳤습니다.</li>
+                                </ul>
+                                <p>이 외에도 최근 소식이나 다른 역사적 사건에 대해 궁금한 점이 있으시면 알려주세요.</p>
+                            </div>`;
+            } else if (lowerQuestion.includes("시간")) {
+                const now = new Date();
+                response = `현재 시간은 ${now.toLocaleString('ko-KR', {
+                    year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
+                    hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true
+                })}입니다.`;
+            } else if (lowerQuestion.includes("한국 대통령")) {
+                response = `<div class="info-card">
+                                <h3>대한민국 대통령</h3>
+                                <p><strong>현재 대통령:</strong> <b>윤석열</b></p>
+                                <p><strong>주요 역대 대통령 (일부):</strong></p>
+                                <ul>
+                                    <li>이승만 (초대)</li>
+                                    <li>박정희 (5~9대)</li>
+                                    <li>김대중 (15대)</li>
+                                </ul>
+                                <p>더 자세한 한국 역사 정보도 알려드릴 수 있습니다.</p>
+                            </div>`;
+            } else if (lowerQuestion.includes("중국 주석")) {
+                response = `<div class="info-card">
+                                <h3>중화인민공화국 주석</h3>
+                                <p><strong>현재 주석:</strong> <b>시진핑 (Xi Jinping)</b></p>
+                                <p><strong>주요 역대 지도자 (일부):</strong></p>
+                                <ul>
+                                    <li>마오쩌둥</li>
+                                    <li>덩샤오핑</li>
+                                </ul>
+                                <p>중국 정치 체제에 대해 더 궁금하신가요?</p>
+                            </div>`;
+            } else if (lowerQuestion.includes("일본 총리")) {
+                response = `<div class="info-card">
+                                <h3>일본 내각총리대신</h3>
+                                <p><strong>현재 총리:</strong> <b>기시다 후미오 (Fumio Kishida)</b></p>
+                                <p><strong>주요 역대 총리 (일부):</strong></p>
+                                <ul>
+                                    <li>이토 히로부미 (초대)</li>
+                                    <li>아베 신조 (최장수)</li>
+                                </ul>
+                                <p>일본의 역사나 문화에 대해 궁금한 점이 있으신가요?</p>
+                            </div>`;
+            } else if (lowerQuestion.includes("한국 역사")) {
+                response = `<div class="info-card">
+                                <h3>한국 역사 (주요 시대)</h3>
+                                <ul>
+                                    <li><b>고조선</b> 건국 (기원전 2333년)</li>
+                                    <li><b>삼국시대</b> (고구려, 백제, 신라)</li>
+                                    <li><b>조선</b> (한글 창제, 유교 중심)</li>
+                                    <li><b>일제 강점기</b> (1910-1945)</li>
+                                    <li><b>대한민국 정부 수립</b> (1948) 및 6.25 전쟁</li>
+                                    <li><b>경제 성장</b>과 민주화</li>
+                                </ul>
+                                <p>특정 시대나 사건에 대해 더 자세히 알고 싶으신가요?</p>
+                            </div>`;
+            } else if (lowerQuestion.includes("고마워") || lowerQuestion.includes("감사합니다")) {
+                response = "천만에요! 또 필요하신 것이 있으시면 언제든지 말씀해주세요.";
+            } else if (lowerQuestion.includes("뭐 할 수 있어") || lowerQuestion.includes("도와줄 수 있는게 뭐야")) {
+                response = "저는 현재 시간, 주요 사건사고, 여러 나라의 지도자 정보, 그리고 주요 인물이나 역사를 알려드릴 수 있습니다. 구체적인 질문을 해주세요.";
+            } else {
+                // 이전 대화 내용을 기반으로 키워드 연관성 판단 (간단한 형태)
+                if (history.some(msg => msg.content.toLowerCase().includes("미국")) && lowerQuestion.includes("대통령")) {
+                    response = generateAIResponse("미국 대통령", []); // 미국 대통령 정보로 리다이렉트
+                } else if (history.some(msg => msg.content.toLowerCase().includes("역사")) && lowerQuestion.includes("한국")) {
+                    response = generateAIResponse("한국 역사", []); // 한국 역사 정보로 리다이렉트
+                }
+            }
+
+            return response;
+        }
+
+        sendMessageBtn.addEventListener('click', () => {
+            const question = userInput.value.trim();
+            if (question) {
+                appendMessage('user', question);
+                userInput.value = '';
+                userInput.focus();
+
+                showTypingIndicator();
+
+                setTimeout(() => {
+                    removeTypingIndicator();
+                    const aiResponse = generateAIResponse(question, conversationHistory);
+                    appendMessage('ai', aiResponse);
+                }, 1500); // 1.5초 후 응답 시뮬레이션
+            }
+        });
+
+        userInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                sendMessageBtn.click();
+            }
+        });
+
+        window.addEventListener('load', () => {
+            userInput.focus();
+        });
+    </script>
+</body>
+</html>
